@@ -1,0 +1,14 @@
+{
+    "version": "1.0.0",
+    "routes": [
+        {
+            "path": "*/admin/plugins/glitter-translate",
+            "layout": "index",
+            "auth_required": true,
+            "meta": {
+                "title": "$t:glitter-translate.admin.page_title",
+                "permission": "glitter-translate.translations.read"
+            }
+        }
+    ]
+}

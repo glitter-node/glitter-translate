@@ -1,0 +1,20 @@
+{
+    "name": "plugins/glitter-translate",
+    "description": "Manual locale translation storage for sirsoft-board Posts",
+    "type": "library",
+    "version": "0.2.16",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Glitter.kr"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Plugins\\Glitter\\Translate\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^8.2"
+    }
+}

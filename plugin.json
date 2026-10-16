@@ -1,0 +1,35 @@
+{
+    "identifier": "glitter-translate",
+    "vendor": "Glitter.kr",
+    "name": {
+        "ko": "Glitter Translate",
+        "en": "Glitter Translate"
+    },
+    "version": "0.2.16",
+    "license": "MIT",
+    "description": {
+        "ko": "sirsoft-board 게시글의 수동 번역을 저장하고 로케일별로 해석합니다.",
+        "en": "Stores and resolves manual translations for sirsoft-board posts by locale."
+    },
+    "g7_version": ">=7.0.11",
+    "dependencies": {
+        "modules": {
+            "sirsoft-board": ">=1.1.2"
+        },
+        "plugins": {}
+    },
+    "assets": {
+        "js": {
+            "entry": "resources/js/index.ts",
+            "output": "dist/js/plugin.iife.js"
+        },
+        "css": {
+            "entry": "resources/css/plugin.css",
+            "output": "dist/css/plugin.css"
+        }
+    },
+    "loading": {
+        "strategy": "global",
+        "priority": 120
+    }
+}

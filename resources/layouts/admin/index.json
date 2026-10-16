@@ -1,0 +1,1478 @@
+{
+    "version": "1.0.0",
+    "layout_name": "index",
+    "permissions": [
+        "glitter-translate.translations.read"
+    ],
+    "extends": "_admin_base",
+    "meta": {
+        "title": "$t:glitter-translate.admin.page_title",
+        "description": "$t:glitter-translate.admin.description"
+    },
+    "initLocal": {
+        "boardSearch": "",
+        "postSearch": "",
+        "title": "",
+        "content": "",
+        "isSaving": false,
+        "saveTitleError": null,
+        "saveContentError": null,
+        "deleteTitleError": null,
+        "deleteContentError": null,
+        "deleteRowError": null
+    },
+    "data_sources": [
+        {
+            "id": "boards",
+            "label_key": "$t:glitter-translate.admin.boards_data_source",
+            "type": "api",
+            "endpoint": "/api/modules/sirsoft-board/admin/boards",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_required": true,
+            "refetchOnMount": true,
+            "loading_strategy": "progressive",
+            "params": {
+                "page": "{{query.board_page || 1}}",
+                "per_page": "20",
+                "search": "{{query.board_search}}"
+            },
+            "fallback": {
+                "data": [],
+                "meta": {
+                    "current_page": 1,
+                    "last_page": 1,
+                    "total": 0
+                }
+            }
+        },
+        {
+            "id": "translations",
+            "label_key": "$t:glitter-translate.admin.translation_list_data_source",
+            "type": "api",
+            "endpoint": "/api/plugins/glitter-translate/admin/translations",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_required": true,
+            "refetchOnMount": true,
+            "loading_strategy": "progressive",
+            "params": {
+                "page": "{{query.translation_page || 1}}",
+                "per_page": "20",
+                "locale": "{{query.locale}}"
+            },
+            "fallback": {
+                "data": [],
+                "meta": {
+                    "current_page": 1,
+                    "last_page": 1,
+                    "total": 0
+                }
+            }
+        },
+        {
+            "id": "posts",
+            "label_key": "$t:glitter-translate.admin.posts_data_source",
+            "type": "api",
+            "endpoint": "/api/plugins/glitter-translate/admin/source-posts/{{query.board_slug}}",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_required": true,
+            "refetchOnMount": true,
+            "loading_strategy": "progressive",
+            "if": "{{!!query.board_slug}}",
+            "params": {
+                "page": "{{query.post_page || 1}}",
+                "per_page": "15",
+                "filters[0][field]": "title_content",
+                "filters[0][value]": "{{query.post_search}}",
+                "filters[0][operator]": "like",
+                "post_id": "{{query.post_id}}"
+            },
+            "fallback": {
+                "data": [],
+                "meta": {
+                    "current_page": 1,
+                    "last_page": 1,
+                    "total": 0
+                }
+            }
+        },
+        {
+            "id": "selectedPost",
+            "label_key": "$t:glitter-translate.admin.post_data_source",
+            "type": "api",
+            "endpoint": "/api/modules/sirsoft-board/admin/board/{{query.board_slug}}/posts/{{query.post_id}}",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_required": true,
+            "refetchOnMount": true,
+            "loading_strategy": "blocking",
+            "if": "{{!!query.board_slug && !!query.post_id}}",
+            "fallback": {
+                "data": null
+            }
+        },
+        {
+            "id": "translation",
+            "label_key": "$t:glitter-translate.admin.translation_data_source",
+            "type": "api",
+            "endpoint": "/api/plugins/glitter-translate/admin/posts/{{query.post_id}}/translations",
+            "method": "GET",
+            "auto_fetch": true,
+            "auth_required": true,
+            "refetchOnMount": true,
+            "loading_strategy": "progressive",
+            "if": "{{!!query.post_id}}",
+            "params": {
+                "locale": "{{query.locale || 'en'}}"
+            },
+            "initLocal": {
+                "title": "fields.title.stored_value",
+                "content": "fields.content.stored_value",
+                "titleStatus": "fields.title.status",
+                "contentStatus": "fields.content.status",
+                "titleUpdatedAt": "fields.title.updated_at",
+                "contentUpdatedAt": "fields.content.updated_at"
+            },
+            "fallback": {
+                "data": null
+            }
+        }
+    ],
+    "slots": {
+        "content": [
+            {
+                "type": "basic",
+                "name": "Div",
+                "props": {
+                    "className": "admin-page-content-fluid"
+                },
+                "children": [
+                    {
+                        "type": "composite",
+                        "name": "PageHeader",
+                        "props": {
+                            "title": "$t:glitter-translate.admin.title",
+                            "description": "$t:glitter-translate.admin.description"
+                        }
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "className": "admin-card mb-6 overflow-x-auto"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "H2",
+                                "props": {
+                                    "className": "text-lg font-semibold mb-4"
+                                },
+                                "text": "$t:glitter-translate.admin.existing_translations"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Table",
+                                "if": "{{translations?.data?.data && translations.data.data.length > 0}}",
+                                "props": {
+                                    "className": "w-full text-sm table-fixed"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Thead",
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Tr",
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Th",
+                                                        "props": { "className": "min-w-0 text-left" },
+                                                        "text": "$t:glitter-translate.admin.post"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Th",
+                                                        "props": { "className": "w-16 whitespace-nowrap text-center" },
+                                                        "text": "$t:glitter-translate.admin.locale"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Th",
+                                                        "props": { "className": "w-24 whitespace-nowrap text-center" },
+                                                        "text": "$t:glitter-translate.admin.field"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Th",
+                                                        "props": { "className": "w-20 whitespace-nowrap text-center" },
+                                                        "text": "$t:glitter-translate.admin.status_label"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Th",
+                                                        "props": { "className": "w-28 whitespace-nowrap text-center" },
+                                                        "text": "$t:glitter-translate.admin.action"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Tbody",
+                                        "iteration": {
+                                            "source": "translations?.data?.data ?? []",
+                                            "item_var": "item"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Tr",
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Td",
+                                                        "props": { "className": "min-w-0 break-words text-left" },
+                                                        "text": "{{item.post_title ?? item.post_id}}"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Td",
+                                                        "props": { "className": "w-16 whitespace-nowrap text-center" },
+                                                        "text": "{{item.locale}}"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Td",
+                                                        "props": { "className": "w-24 whitespace-nowrap text-center" },
+                                                        "text": "{{item.field}}"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Td",
+                                                        "props": { "className": "w-20 whitespace-nowrap text-center" },
+                                                        "text": "{{item.status === 'current' ? '$t:glitter-translate.admin.status.current' : (item.status === 'stale' ? '$t:glitter-translate.admin.status.stale' : (item.status === 'orphaned' ? '$t:glitter-translate.admin.status.orphaned' : '$t:glitter-translate.admin.status.missing'))}}"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Td",
+                                                        "props": { "className": "w-28 whitespace-nowrap text-center" },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Button",
+                                                                "props": {
+                                                                    "type": "button",
+                                                                    "className": "btn btn-secondary btn-sm",
+                                                                    "disabled": "{{_local.isSaving}}"
+                                                                },
+                                                                "actions": [
+                                                                    {
+                                                                        "type": "click",
+                                                                        "handler": "sequence",
+                                                                        "confirm": "$t:glitter-translate.admin.confirm_delete_row|post={{item.post_title ?? item.post_id}}|locale={{item.locale}}|field={{item.field}}",
+                                                                        "actions": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": {
+                                                                                    "target": "local",
+                                                                                    "isSaving": true,
+                                                                                    "deleteRowError": null
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "handler": "apiCall",
+                                                                                "auth_mode": "required",
+                                                                                "target": "/api/plugins/glitter-translate/admin/translations/{{item.id}}",
+                                                                                "params": {
+                                                                                    "method": "DELETE"
+                                                                                },
+                                                                                "onError": [
+                                                                                    {
+                                                                                        "handler": "setState",
+                                                                                        "params": {
+                                                                                            "target": "local",
+                                                                                            "deleteRowError": "{{error.message ?? '$t:glitter-translate.admin.delete_failed'}}"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "handler": "conditions",
+                                                                                "conditions": [
+                                                                                    {
+                                                                                        "if": "{{_local.deleteRowError}}",
+                                                                                        "then": {
+                                                                                            "handler": "sequence",
+                                                                                            "actions": [
+                                                                                                {
+                                                                                                    "handler": "setState",
+                                                                                                    "params": {
+                                                                                                        "target": "local",
+                                                                                                        "isSaving": false
+                                                                                                    }
+                                                                                                },
+                                                                                                {
+                                                                                                    "handler": "toast",
+                                                                                                    "params": {
+                                                                                                        "type": "error",
+                                                                                                        "message": "{{_local.deleteRowError}}"
+                                                                                                    }
+                                                                                                }
+                                                                                            ]
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        "then": {
+                                                                                            "handler": "sequence",
+                                                                                            "actions": [
+                                                                                                {
+                                                                                                    "handler": "setState",
+                                                                                                    "params": {
+                                                                                                        "target": "local",
+                                                                                                        "isSaving": false
+                                                                                                    }
+                                                                                                },
+                                                                                                {
+                                                                                                    "handler": "toast",
+                                                                                                    "params": {
+                                                                                                        "type": "success",
+                                                                                                        "message": "$t:glitter-translate.admin.translation_deleted"
+                                                                                                    }
+                                                                                                },
+                                                                                                {
+                                                                                                    "handler": "refetchDataSource",
+                                                                                                    "params": {
+                                                                                                        "dataSourceId": "translations"
+                                                                                                    }
+                                                                                                }
+                                                                                            ]
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ],
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Span",
+                                                                        "text": "$t:glitter-translate.admin.delete_translation"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "P",
+                                "if": "{{translations?.data?.data && translations.data.data.length === 0}}",
+                                "props": {
+                                    "className": "text-sm text-body-secondary"
+                                },
+                                "text": "$t:glitter-translate.admin.empty"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "props": {
+                            "className": "admin-card"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "H2",
+                                "props": {
+                                    "className": "text-lg font-semibold mb-4"
+                                },
+                                "text": "$t:glitter-translate.admin.select_post"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "flex flex-wrap gap-3 items-end"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "min-w-[240px] flex-1"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Label",
+                                                "props": {
+                                                    "className": "form-label",
+                                                    "htmlFor": "translation-board"
+                                                },
+                                                "text": "$t:glitter-translate.admin.board"
+                                            },
+                                            {
+                                                "type": "composite",
+                                                "name": "Select",
+                                                "props": {
+                                                    "id": "translation-board",
+                                                    "value": "{{query.board_slug || ''}}",
+                                                    "className": "input w-full",
+                                                    "options": "{{[{value:'',label:'$t:glitter-translate.admin.choose_board'}].concat((boards?.data?.data || []).map(function(board){return {value: board.slug, label: board.name + ' (' + board.slug + ')'};}))}}"
+                                                },
+                                                "actions": [
+                                                    {
+                                                        "type": "change",
+                                                        "handler": "navigate",
+                                                        "params": {
+                                                            "path": "/admin/plugins/glitter-translate",
+                                                            "replace": true,
+                                                            "query": {
+                                                                "board_slug": "{{$event.target.value}}",
+                                                                "post_id": "",
+                                                                "post_page": 1,
+                                                                "post_search": "",
+                                                                "locale": "{{query.locale || 'en'}}"
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "min-w-[240px] flex-1"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Label",
+                                                "props": {
+                                                    "className": "form-label",
+                                                    "htmlFor": "translation-board-search"
+                                                },
+                                                "text": "$t:glitter-translate.admin.board_search"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Input",
+                                                "props": {
+                                                    "id": "translation-board-search",
+                                                    "type": "search",
+                                                    "value": "{{_local.boardSearch || ''}}",
+                                                    "placeholder": "$t:glitter-translate.admin.board_search_placeholder",
+                                                    "className": "input w-full"
+                                                },
+                                                "actions": [
+                                                    {
+                                                        "type": "change",
+                                                        "handler": "setState",
+                                                        "params": {
+                                                            "boardSearch": "{{$event.target.value}}"
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "keypress",
+                                                        "key": "Enter",
+                                                        "handler": "navigate",
+                                                        "params": {
+                                                            "path": "/admin/plugins/glitter-translate",
+                                                            "replace": true,
+                                                            "query": {
+                                                                "board_search": "{{$event.target.value}}",
+                                                                "board_page": 1
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "basic",
+                                "name": "P",
+                                "if": "{{boards?.loading}}",
+                                "props": {
+                                    "className": "text-sm text-body-secondary mt-3"
+                                },
+                                "text": "$t:glitter-translate.admin.loading"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "P",
+                                "if": "{{boards?.error}}",
+                                "props": {
+                                    "className": "alert-danger mt-3"
+                                },
+                                "text": "$t:glitter-translate.admin.load_failed"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "if": "{{!!query.board_slug}}",
+                                "props": {
+                                    "className": "mt-5"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "H3",
+                                        "props": {
+                                            "className": "text-base font-semibold mb-3"
+                                        },
+                                        "text": "$t:glitter-translate.admin.posts"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "flex flex-wrap gap-3 items-end mb-4"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "min-w-[260px] flex-1"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": {
+                                                            "className": "form-label",
+                                                            "htmlFor": "translation-post-search"
+                                                        },
+                                                        "text": "$t:glitter-translate.admin.post_search"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Input",
+                                                        "props": {
+                                                            "id": "translation-post-search",
+                                                            "type": "search",
+                                                            "value": "{{_local.postSearch || query.post_search || ''}}",
+                                                            "placeholder": "$t:glitter-translate.admin.post_search_placeholder",
+                                                            "className": "input w-full"
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "change",
+                                                                "handler": "setState",
+                                                                "params": {
+                                                                    "postSearch": "{{$event.target.value}}"
+                                                                }
+                                                            },
+                                                            {
+                                                                "type": "keypress",
+                                                                "key": "Enter",
+                                                                "handler": "navigate",
+                                                                "params": {
+                                                                    "path": "/admin/plugins/glitter-translate",
+                                                                    "mergeQuery": true,
+                                                                    "replace": true,
+                                                                    "query": {
+                                                                        "board_slug": "{{query.board_slug}}",
+                                                                        "post_search": "{{$event.target.value}}",
+                                                                        "post_page": 1,
+                                                                        "post_id": ""
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "if": "{{posts?.loading}}",
+                                        "props": {
+                                            "className": "text-sm text-body-secondary"
+                                        },
+                                        "text": "$t:glitter-translate.admin.loading"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "if": "{{posts?.error}}",
+                                        "props": {
+                                            "className": "alert-danger"
+                                        },
+                                        "text": "$t:glitter-translate.admin.load_failed"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Table",
+                                    "if": "{{posts?.data?.data && posts.data.data.length > 0}}",
+                                    "props": {
+                                        "className": "w-full text-sm table-fixed"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Thead",
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Tr",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Th",
+                                                                "props": { "className": "w-16 whitespace-nowrap text-center" },
+                                                                "text": "$t:glitter-translate.admin.post_id"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Th",
+                                                                "props": { "className": "min-w-0 text-left" },
+                                                                "text": "$t:glitter-translate.admin.original_title"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Th",
+                                                                "props": { "className": "w-32 whitespace-nowrap text-center" },
+                                                                "text": "$t:glitter-translate.admin.category"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Th",
+                                                                "props": { "className": "w-28 whitespace-nowrap text-center" },
+                                                                "text": "$t:glitter-translate.admin.action"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Tbody",
+                                                "iteration": {
+                                                    "source": "posts?.data?.data ?? []",
+                                                    "item_var": "item"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Tr",
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "w-16 whitespace-nowrap text-center" },
+                                                                "text": "{{item.id}}"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "min-w-0 break-words text-left" },
+                                                                "text": "{{item.title}}"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "w-32 whitespace-nowrap text-center" },
+                                                                "text": "{{item.category ?? ''}}"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Td",
+                                                                "props": { "className": "w-28 whitespace-nowrap text-center" },
+                                                                "children": [
+                                                                    {
+                                                                        "type": "basic",
+                                                                        "name": "Button",
+                                                                        "props": {
+                                                                            "type": "button",
+                                                                            "className": "btn btn-secondary",
+                                                                            "value": "{{item.id}}"
+                                                                        },
+                                                                        "actions": [
+                                                                            {
+                                                                                "type": "click",
+                                                                                "handler": "navigate",
+                                                                                "params": {
+                                                                                    "path": "/admin/plugins/glitter-translate",
+                                                                                    "mergeQuery": true,
+                                                                                    "replace": true,
+                                                                                    "query": {
+                                                                                        "board_slug": "{{query.board_slug}}",
+                                                                                        "post_id": "{{$event.target.value}}",
+                                                                                        "post_search": "{{query.post_search}}",
+                                                                                        "locale": "{{query.locale || 'en'}}"
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        ],
+                                                                        "text": "$t:glitter-translate.admin.select"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "P",
+                                        "if": "{{posts?.data?.data && posts.data.data.length === 0}}",
+                                        "props": {
+                                            "className": "text-sm text-body-secondary"
+                                        },
+                                        "text": "$t:glitter-translate.admin.no_posts"
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "if": "{{posts?.data?.pagination?.last_page > 1}}",
+                                        "props": {
+                                            "className": "flex gap-2 mt-4"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "Button",
+                                                "props": {
+                                                    "type": "button",
+                                                    "className": "btn btn-secondary",
+                                                    "disabled": "{{(posts.data.pagination.current_page || 1) <= 1}}"
+                                                },
+                                                "actions": [
+                                                    {
+                                                        "type": "click",
+                                                        "handler": "navigate",
+                                                        "params": {
+                                                            "path": "/admin/plugins/glitter-translate",
+                                                            "mergeQuery": true,
+                                                            "query": {
+                                                                "post_page": "{{(posts.data.pagination.current_page || 1) - 1}}",
+                                                                "post_id": ""
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "text": "$t:glitter-translate.admin.previous"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Span",
+                                                "props": {
+                                                    "className": "self-center text-sm text-body-secondary"
+                                                },
+                                                "text": "$t:glitter-translate.admin.page_summary|current={{posts.data.pagination.current_page}}|last={{posts.data.pagination.last_page}}"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Button",
+                                                "props": {
+                                                    "type": "button",
+                                                    "className": "btn btn-secondary",
+                                                    "disabled": "{{(posts.data.pagination.current_page || 1) >= posts.data.pagination.last_page}}"
+                                                },
+                                                "actions": [
+                                                    {
+                                                        "type": "click",
+                                                        "handler": "navigate",
+                                                        "params": {
+                                                            "path": "/admin/plugins/glitter-translate",
+                                                            "mergeQuery": true,
+                                                            "query": {
+                                                                "post_page": "{{(posts.data.pagination.current_page || 1) + 1}}",
+                                                                "post_id": ""
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Span",
+                                                        "text": "$t:glitter-translate.admin.next"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "basic",
+                        "name": "Div",
+                        "if": "{{!!query.post_id && selectedPost?.data && !selectedPost?.error}}",
+                        "props": {
+                            "className": "admin-card mt-6"
+                        },
+                        "children": [
+                            {
+                                "type": "basic",
+                                "name": "H2",
+                                "props": {
+                                    "className": "text-lg font-semibold mb-4"
+                                },
+                                "text": "$t:glitter-translate.admin.editor"
+                            },
+                            {
+                                "type": "basic",
+                                "name": "Div",
+                                "props": {
+                                    "className": "grid gap-6 lg:grid-cols-2"
+                                },
+                                "children": [
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "min-w-0"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "text-base font-semibold mb-3"
+                                                },
+                                                "text": "$t:glitter-translate.admin.original_content"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "font-medium whitespace-pre-wrap break-words"
+                                                },
+                                                "text": "{{selectedPost.data.title}}"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 whitespace-pre-wrap break-words text-body-secondary"
+                                                },
+                                                "text": "{{selectedPost.data.content}}"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "P",
+                                                "props": {
+                                                    "className": "mt-3 text-sm text-body-secondary"
+                                                },
+                                                "text": "{{selectedPost.data.category ?? ''}}"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": "basic",
+                                        "name": "Div",
+                                        "props": {
+                                            "className": "min-w-0"
+                                        },
+                                        "children": [
+                                            {
+                                                "type": "basic",
+                                                "name": "H3",
+                                                "props": {
+                                                    "className": "text-base font-semibold mb-3"
+                                                },
+                                                "text": "$t:glitter-translate.admin.translated_content"
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mb-4"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": {
+                                                            "className": "form-label",
+                                                            "htmlFor": "translation-locale"
+                                                        },
+                                                        "text": "$t:glitter-translate.admin.locale"
+                                                    },
+                                                    {
+                                                        "type": "composite",
+                                                        "name": "Select",
+                                                        "props": {
+                                                            "id": "translation-locale",
+                                                            "value": "{{query.locale || 'en'}}",
+                                                            "className": "input w-full",
+                                                                "options": [
+                                                                {
+                                                                    "value": "en",
+                                                                    "label": "$t:glitter-translate.admin.locale_english"
+                                                                },
+                                                                {
+                                                                    "value": "ko",
+                                                                    "label": "$t:glitter-translate.admin.locale_korean"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "change",
+                                                                "handler": "navigate",
+                                                                "params": {
+                                                                    "path": "/admin/plugins/glitter-translate",
+                                                                    "mergeQuery": true,
+                                                                    "replace": true,
+                                                                    "query": {
+                                                                        "board_slug": "{{query.board_slug}}",
+                                                                        "post_id": "{{query.post_id}}",
+                                                                        "locale": "{{$event.target.value}}"
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "grid gap-3 sm:grid-cols-2 mb-4"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": {
+                                                            "className": "text-sm"
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:glitter-translate.admin.title_status"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "props": {
+                                                                    "className": "ml-2 font-medium"
+                                                                },
+                                                                "text": "{{translation?.data?.fields?.title?.status === 'current' ? '$t:glitter-translate.admin.status.current' : (translation?.data?.fields?.title?.status === 'stale' ? '$t:glitter-translate.admin.status.stale' : '$t:glitter-translate.admin.status.missing')}}"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "props": {
+                                                            "className": "text-sm"
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:glitter-translate.admin.content_status"
+                                                            },
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "props": {
+                                                                    "className": "ml-2 font-medium"
+                                                                },
+                                                                "text": "{{translation?.data?.fields?.content?.status === 'current' ? '$t:glitter-translate.admin.status.current' : (translation?.data?.fields?.content?.status === 'stale' ? '$t:glitter-translate.admin.status.stale' : '$t:glitter-translate.admin.status.missing')}}"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mb-4"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": {
+                                                            "className": "form-label",
+                                                            "htmlFor": "translation-title"
+                                                        },
+                                                        "text": "$t:glitter-translate.admin.title_field"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Input",
+                                                        "props": {
+                                                            "id": "translation-title",
+                                                            "type": "text",
+                                                            "value": "{{_local.title ?? ''}}",
+                                                            "className": "input w-full"
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "change",
+                                                                "handler": "setState",
+                                                                "params": {
+                                                                    "title": "{{$event.target.value}}"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "mb-4"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Label",
+                                                        "props": {
+                                                            "className": "form-label",
+                                                            "htmlFor": "translation-content"
+                                                        },
+                                                        "text": "$t:glitter-translate.admin.content_field"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Textarea",
+                                                        "props": {
+                                                            "id": "translation-content",
+                                                            "rows": 14,
+                                                            "value": "{{_local.content ?? ''}}",
+                                                            "className": "input w-full"
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "change",
+                                                                "handler": "setState",
+                                                                "params": {
+                                                                    "content": "{{$event.target.value}}"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "basic",
+                                                "name": "Div",
+                                                "props": {
+                                                    "className": "flex flex-wrap gap-2"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Button",
+                                                        "props": {
+                                                            "type": "button",
+                                                            "className": "btn btn-primary",
+                                                            "disabled": "{{!_local.title || !_local.content || _local.isSaving}}"
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "click",
+                                                                "handler": "sequence",
+                                                                "actions": [
+                                                                    {
+                                                                        "handler": "setState",
+                                                                        "params": {
+                                                                            "target": "local",
+                                                                            "isSaving": true,
+                                                                            "saveTitleError": null,
+                                                                            "saveContentError": null
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "handler": "apiCall",
+                                                                        "auth_mode": "required",
+                                                                        "target": "/api/plugins/glitter-translate/admin/posts/{{query.post_id}}/translations/{{query.locale || 'en'}}/title",
+                                                                        "params": {
+                                                                            "method": "PUT",
+                                                                            "body": {
+                                                                                "value": "{{_local.title}}"
+                                                                            }
+                                                                        },
+                                                                        "onError": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": {
+                                                                                    "target": "local",
+                                                                                    "saveTitleError": "{{error.message ?? '$t:glitter-translate.admin.save_failed'}}"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "handler": "apiCall",
+                                                                        "auth_mode": "required",
+                                                                        "target": "/api/plugins/glitter-translate/admin/posts/{{query.post_id}}/translations/{{query.locale || 'en'}}/content",
+                                                                        "params": {
+                                                                            "method": "PUT",
+                                                                            "body": {
+                                                                                "value": "{{_local.content}}"
+                                                                            }
+                                                                        },
+                                                                        "onError": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": {
+                                                                                    "target": "local",
+                                                                                    "saveContentError": "{{error.message ?? '$t:glitter-translate.admin.save_failed'}}"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "handler": "conditions",
+                                                                        "conditions": [
+                                                                            {
+                                                                                "if": "{{_local.saveTitleError && _local.saveContentError}}",
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "error",
+                                                                                                "message": "$t:glitter-translate.admin.translation_save_both_failed"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "if": "{{_local.saveTitleError}}",
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "error",
+                                                                                                "message": "$t:glitter-translate.admin.translation_save_title_partial"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "if": "{{_local.saveContentError}}",
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "error",
+                                                                                                "message": "$t:glitter-translate.admin.translation_save_content_partial"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "success",
+                                                                                                "message": "$t:glitter-translate.admin.translation_saved"
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "refetchDataSource",
+                                                                                            "params": {
+                                                                                                "dataSourceId": "translation"
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "refetchDataSource",
+                                                                                            "params": {
+                                                                                                "dataSourceId": "translations"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:glitter-translate.admin.save_translation"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "Button",
+                                                        "props": {
+                                                            "type": "button",
+                                                            "className": "btn btn-secondary",
+                                                            "disabled": "{{(!translation?.data?.fields?.title?.stored_value && !translation?.data?.fields?.content?.stored_value) || _local.isSaving}}"
+                                                        },
+                                                        "actions": [
+                                                            {
+                                                                "type": "click",
+                                                                "handler": "sequence",
+                                                                "confirm": "$t:glitter-translate.admin.confirm_delete_translation",
+                                                                "actions": [
+                                                                    {
+                                                                        "handler": "setState",
+                                                                        "params": {
+                                                                            "target": "local",
+                                                                            "isSaving": true,
+                                                                            "deleteTitleError": null,
+                                                                            "deleteContentError": null
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "handler": "apiCall",
+                                                                        "auth_mode": "required",
+                                                                        "if": "{{!!translation?.data?.fields?.title?.stored_value}}",
+                                                                        "target": "/api/plugins/glitter-translate/admin/posts/{{query.post_id}}/translations/{{query.locale || 'en'}}/title",
+                                                                        "params": {
+                                                                            "method": "DELETE"
+                                                                        },
+                                                                        "onError": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": {
+                                                                                    "target": "local",
+                                                                                    "deleteTitleError": "{{error.message ?? '$t:glitter-translate.admin.delete_failed'}}"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "handler": "apiCall",
+                                                                        "auth_mode": "required",
+                                                                        "if": "{{!!translation?.data?.fields?.content?.stored_value}}",
+                                                                        "target": "/api/plugins/glitter-translate/admin/posts/{{query.post_id}}/translations/{{query.locale || 'en'}}/content",
+                                                                        "params": {
+                                                                            "method": "DELETE"
+                                                                        },
+                                                                        "onError": [
+                                                                            {
+                                                                                "handler": "setState",
+                                                                                "params": {
+                                                                                    "target": "local",
+                                                                                    "deleteContentError": "{{error.message ?? '$t:glitter-translate.admin.delete_failed'}}"
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        "handler": "conditions",
+                                                                        "conditions": [
+                                                                            {
+                                                                                "if": "{{_local.deleteTitleError && _local.deleteContentError}}",
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "error",
+                                                                                                "message": "$t:glitter-translate.admin.translation_delete_both_failed"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "if": "{{_local.deleteTitleError}}",
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "error",
+                                                                                                "message": "$t:glitter-translate.admin.translation_delete_title_partial"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "if": "{{_local.deleteContentError}}",
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "error",
+                                                                                                "message": "$t:glitter-translate.admin.translation_delete_content_partial"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "then": {
+                                                                                    "handler": "sequence",
+                                                                                    "actions": [
+                                                                                        {
+                                                                                            "handler": "setState",
+                                                                                            "params": {
+                                                                                                "target": "local",
+                                                                                                "isSaving": false
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "toast",
+                                                                                            "params": {
+                                                                                                "type": "success",
+                                                                                                "message": "$t:glitter-translate.admin.translation_deleted"
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "refetchDataSource",
+                                                                                            "params": {
+                                                                                                "dataSourceId": "translation"
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "handler": "refetchDataSource",
+                                                                                            "params": {
+                                                                                                "dataSourceId": "translations"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            }
+                                                        ],
+                                                        "children": [
+                                                            {
+                                                                "type": "basic",
+                                                                "name": "Span",
+                                                                "text": "$t:glitter-translate.admin.delete_translation"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "if": "{{_local.saveTitleError || _local.saveContentError}}",
+                                                        "props": {
+                                                            "className": "alert-danger w-full",
+                                                            "role": "alert"
+                                                        },
+                                                        "text": "{{_local.saveTitleError || _local.saveContentError}}"
+                                                    },
+                                                    {
+                                                        "type": "basic",
+                                                        "name": "P",
+                                                        "if": "{{_local.deleteTitleError || _local.deleteContentError}}",
+                                                        "props": {
+                                                            "className": "alert-danger w-full",
+                                                            "role": "alert"
+                                                        },
+                                                        "text": "{{_local.deleteTitleError || _local.deleteContentError}}"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
